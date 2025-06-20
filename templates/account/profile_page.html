@@ -1,0 +1,124 @@
+{% extends "account/base.html" %} {# Assumes you have a base.html in templates/account/ or allauth's base #}
+{% load static %}
+{% load i18n %}
+
+{% block head_title %}{% trans "User Profile" %}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>{% trans "My Profile" %}</h2>
+
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">{% trans "Profile Information" %}</h5>
+            <p><strong>{% trans "Username" %}:</strong> <span id="profile-username">Loading...</span></p>
+            <p><strong>{% trans "Email" %}:</strong> <span id="profile-email">Loading...</span></p>
+
+            <hr>
+
+            <h5>{% trans "Edit Bio" %}</h5>
+            <form id="profile-edit-form">
+                {% csrf_token %} {# Important for POST/PUT/PATCH if SessionAuthentication is used #}
+                <div class="mb-3">
+                    <label for="profile-bio" class="form-label">{% trans "Bio" %}:</label>
+                    <textarea class="form-control" id="profile-bio" rows="4" placeholder="Tell us about yourself..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">{% trans "Save Bio" %}</button>
+            </form>
+            <div id="profile-message" class="mt-3"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const usernameEl = document.getElementById('profile-username');
+    const emailEl = document.getElementById('profile-email');
+    const bioTextarea = document.getElementById('profile-bio');
+    const profileForm = document.getElementById('profile-edit-form');
+    const messageEl = document.getElementById('profile-message');
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    // Fetch profile data on page load
+    fetch('/api/accounts/profile/', {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRFToken': csrfToken // Usually not needed for GET unless CSRF is enforced on GET by mistake
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok: ' + response.statusText);
+        }
+        return response.json();
+    })
+    .then(data => {
+        usernameEl.textContent = data.user_username || 'Not set';
+        emailEl.textContent = data.user_email || 'Not set';
+        bioTextarea.value = data.bio || '';
+    })
+    .catch(error => {
+        console.error('Error fetching profile:', error);
+        messageEl.textContent = 'Error fetching profile data.';
+        messageEl.className = 'alert alert-danger';
+    });
+
+    // Handle form submission
+    profileForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const newBio = bioTextarea.value;
+
+        fetch('/api/accounts/profile/', {
+            method: 'PUT', // Or PATCH if you only want to send changed fields
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken, // Crucial for state-changing methods
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ bio: newBio })
+        })
+        .then(response => {
+            // Check if response is JSON before trying to parse
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                return response.json().then(data => ({ ok: response.ok, status: response.status, data }));
+            } else {
+                return response.text().then(text => ({ ok: response.ok, status: response.status, data: text }));
+            }
+        })
+        .then(result => {
+            if (result.ok) {
+                messageEl.textContent = 'Bio updated successfully!';
+                messageEl.className = 'alert alert-success';
+                // Optionally re-fetch or update bioTextarea.value from result.data.bio if response returns full profile
+                if (result.data && typeof result.data === 'object' && result.data.bio) {
+                    bioTextarea.value = result.data.bio;
+                }
+            } else {
+                console.error('Error updating profile:', result.data);
+                let errorMessage = 'Error updating profile.';
+                if (result.data && typeof result.data === 'object') {
+                    // Try to get a more specific error message from DRF response
+                    if (result.data.detail) {
+                        errorMessage = result.data.detail;
+                    } else if (Object.values(result.data).length > 0) {
+                        errorMessage = Object.values(result.data).flat().join(' ');
+                    }
+                } else if (typeof result.data === 'string' && result.data.length < 200) {
+                    // If it's a short string, it might be an error message itself
+                    errorMessage = result.data;
+                }
+                messageEl.textContent = errorMessage;
+                messageEl.className = 'alert alert-danger';
+            }
+        })
+        .catch(error => {
+            console.error('Error submitting profile update:', error);
+            messageEl.textContent = 'Error submitting profile update.';
+            messageEl.className = 'alert alert-danger';
+        });
+    });
+});
+</script>
+{% endblock %}
