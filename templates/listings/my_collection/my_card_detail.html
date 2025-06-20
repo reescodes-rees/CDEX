@@ -1,0 +1,64 @@
+{% extends "account/base.html" %}
+{% load static %}
+{% block head_title %}{{ card.card_name }} - My Collection{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <div class="col-md-6">
+            <h3>{{ card.card_name }}</h3>
+            <p class="text-muted">
+                {{ card.game.name|default:"N/A" }}
+                {% if card.set_name %}| {{ card.set_name }}{% endif %}
+                {% if card.year %}| {{ card.year }}{% endif %}
+            </p>
+
+            {% if card.image_1 %}
+                <img src="{{ card.image_1.url }}" class="img-fluid rounded mb-2" alt="{{ card.card_name }}">
+            {% endif %}
+            {% if card.image_2 %}
+                <img src="{{ card.image_2.url }}" class="img-fluid rounded mb-2" style="max-width: 150px; margin-right: 5px;" alt="Image 2">
+            {% endif %}
+            {% if card.image_3 %}
+                <img src="{{ card.image_3.url }}" class="img-fluid rounded mb-2" style="max-width: 150px;" alt="Image 3">
+            {% endif %}
+        </div>
+        <div class="col-md-6">
+            <h4>Details:</h4>
+            <ul>
+                <li><strong>Condition:</strong> {{ card.get_condition_display|default:"N/A" }}</li>
+                <li><strong>Graded:</strong> {% if card.is_graded %}Yes{% else %}No{% endif %}</li>
+                {% if card.is_graded %}
+                <li><strong>Grader:</strong> {{ card.get_grader_display|default:"N/A" }}</li>
+                <li><strong>Grade:</strong> {{ card.grade|default:"N/A" }}</li>
+                {% if card.certification_number %}<li><strong>Cert #:</strong> {{ card.certification_number }}</li>{% endif %}
+                {% endif %}
+                <li><strong>Public Description:</strong> {{ card.public_description|linebreaksbr|default:"No public description." }}</li>
+                <li><strong>Private Notes:</strong> {{ card.notes|linebreaksbr|default:"No private notes." }}</li>
+                {% if card.purchase_price %}<li><strong>Purchase Price:</strong> ${{ card.purchase_price }}</li>{% endif %}
+                <li><strong>Added to Collection:</strong> {{ card.date_added_to_collection|date:"F j, Y" }}</li>
+                 {% if card.attributes %}
+                <li><strong>Attributes:</strong>
+                    <ul>
+                    {% for key, value in card.attributes.items %}
+                        <li>{{ key }}: {{ value }}</li>
+                    {% endfor %}
+                    </ul>
+                </li>
+                {% endif %}
+            </ul>
+            <hr>
+            <a href="{% url 'listings:my-card-edit' card.pk %}" class="btn btn-primary">Edit Card</a>
+            <a href="{% url 'listings:my-card-delete' card.pk %}" class="btn btn-danger">Delete Card</a>
+            <a href="{% url 'listings:listing-create' %}?card_id={{ card.pk }}" class="btn btn-success mt-2">Create Listing from this Card</a>
+            <a href="{% url 'listings:my-card-list' %}" class="btn btn-secondary mt-2">Back to My Collection</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

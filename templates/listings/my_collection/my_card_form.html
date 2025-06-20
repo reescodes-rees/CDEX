@@ -1,0 +1,40 @@
+{% extends "account/base.html" %}
+{% load crispy_forms_tags %}
+{% block head_title %}{% if object %}Edit {{ object.card_name }}{% else %}Add New Card to Collection{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{% if object %}Edit "{{ object.card_name }}"{% else %}Add New Card to Collection{% endif %}</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <button type="submit" class="btn btn-primary mt-3">
+            {% if object %}Save Changes{% else %}Add Card{% endif %}
+        </button>
+        <a href="{% if object %}{% url 'listings:my-card-detail' object.pk %}{% else %}{% url 'listings:my-card-list' %}{% endif %}" class="btn btn-secondary mt-3">Cancel</a>
+    </form>
+</div>
+
+<script>
+// Basic JS to show/hide grading fields based on 'is_graded' checkbox
+document.addEventListener('DOMContentLoaded', function() {
+    const isGradedCheckbox = document.getElementById('id_is_graded');
+    // Assuming crispy forms wraps fields in divs like <div id="div_id_grader" class="form-group">...</div>
+    const graderDiv = document.getElementById('div_id_grader');
+    const gradeDiv = document.getElementById('div_id_grade');
+    const certNumDiv = document.getElementById('div_id_certification_number');
+
+    function toggleGradingFields() {
+        const show = isGradedCheckbox.checked;
+        if (graderDiv) graderDiv.style.display = show ? '' : 'none';
+        if (gradeDiv) gradeDiv.style.display = show ? '' : 'none';
+        if (certNumDiv) certNumDiv.style.display = show ? '' : 'none';
+    }
+
+    if (isGradedCheckbox) {
+        isGradedCheckbox.addEventListener('change', toggleGradingFields);
+        toggleGradingFields(); // Initial call to set state based on current value
+    }
+});
+</script>
+{% endblock %}

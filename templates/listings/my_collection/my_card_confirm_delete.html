@@ -1,0 +1,22 @@
+{% extends "account/base.html" %}
+{% block head_title %}Confirm Delete: {{ card.card_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Confirm Delete Card</h2>
+    <p>Are you sure you want to delete the card "<strong>{{ card.card_name }}</strong>" ({{card.game.name|default:''}} - {{card.set_name|default:''}}) from your collection?</p>
+    <p class="text-danger">This action cannot be undone.</p>
+
+    {% if messages %} {# To show messages from the delete view, e.g., if deletion is blocked #}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, Delete from Collection</button>
+        <a href="{% url 'listings:my-card-detail' card.pk %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

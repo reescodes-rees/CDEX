@@ -1,0 +1,123 @@
+{% extends "account/base.html" %}
+{% load crispy_forms_tags %}
+{% load static %}
+{% load i18n %} {# Added i18n for trans tag if used, and humanize for timeuntil if that's intended later #}
+{% load humanize %} {# For timeuntil if not already loaded globally or via other means #}
+
+
+{% block head_title %}{{ listing.card_for_listing.card_name }} - Listing Details{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <h2>{{ listing.card_for_listing.card_name }}</h2>
+            <p class="text-muted">
+                {{ listing.card_for_listing.game.name|default:"N/A" }}
+                {% if listing.card_for_listing.set_name %}| {{ listing.card_for_listing.set_name }}{% endif %}
+                {% if listing.card_for_listing.year %}| {{ listing.card_for_listing.year }}{% endif %}
+            </p>
+
+            {% if listing.card_for_listing.image_1 %}
+            <img src="{{ listing.card_for_listing.image_1.url }}" class="img-fluid rounded mb-3" alt="{{ listing.card_for_listing.card_name }}" style="max-height: 400px;">
+            {% if listing.card_for_listing.image_2 %}<img src="{{ listing.card_for_listing.image_2.url }}" class="img-fluid rounded mb-3" style="max-height: 200px; margin-right: 10px;">{% endif %}
+            {% if listing.card_for_listing.image_3 %}<img src="{{ listing.card_for_listing.image_3.url }}" class="img-fluid rounded mb-3" style="max-height: 200px;">{% endif %}
+            {% else %}
+            <p><em>No image provided.</em></p>
+            {% endif %}
+
+            <h4>Card Details:</h4>
+            <ul>
+                <li><strong>Condition:</strong> {{ listing.card_for_listing.get_condition_display|default:"N/A" }}</li>
+                {% if listing.card_for_listing.is_graded %}
+                <li><strong>Graded:</strong> Yes</li>
+                <li><strong>Grader:</strong> {{ listing.card_for_listing.get_grader_display|default:"N/A" }}</li>
+                <li><strong>Grade:</strong> {{ listing.card_for_listing.grade|default:"N/A" }}</li>
+                {% if listing.card_for_listing.certification_number %}<li><strong>Cert #:</strong> {{ listing.card_for_listing.certification_number }}</li>{% endif %}
+                {% else %}
+                <li><strong>Graded:</strong> No</li>
+                {% endif %}
+                {% if listing.card_for_listing.attributes %}
+                <li><strong>Attributes:</strong>
+                    <ul>
+                    {% for key, value in listing.card_for_listing.attributes.items %}
+                        <li>{{ key }}: {{ value }}</li>
+                    {% endfor %}
+                    </ul>
+                </li>
+                {% endif %}
+            </ul>
+
+            <h4>Listing Information:</h4>
+            <p><strong>Lister:</strong> {{ listing.lister.username }}</p>
+            <p><strong>Type:</strong> {{ listing.get_listing_type_display }}</p>
+            {% if listing.listing_type == 'SALE' %}
+            <p><strong>Price:</strong> ${{ listing.price }}</p>
+            {% elif listing.listing_type == 'TRADE' %}
+            <p><strong>Trade Interests:</strong> {{ listing.trade_preference_description|linebreaksbr }}</p>
+            {% elif listing.listing_type == 'AUCTION' %}
+            <p><strong>Starting Price:</strong> ${{ listing.auction_start_price }}</p>
+            <p><strong>Bid Increment:</strong> ${{ listing.auction_bid_increment }}</p>
+            <p><strong>Ends:</strong> {{ listing.auction_end_datetime|date:"F j, Y, P" }} ({{ listing.auction_end_datetime|timeuntil }})</p>
+            <p><strong>Current Highest Bid:</strong> ${{ listing.current_highest_bid|default:"N/A" }}
+                {% if listing.current_high_bidder %}(by {{ listing.current_high_bidder.username }}){% endif %}
+            </p>
+            {% endif %}
+            <p><strong>Description:</strong> {{ listing.listing_description|linebreaksbr|default:"No additional description." }}</p>
+
+            <h4>Location & Shipping:</h4>
+            <p><strong>Location:</strong> {{ listing.seller_location_city|default:"N/A" }}{% if listing.seller_location_region %}, {{ listing.seller_location_region }}{% endif %}, {{ listing.seller_location_country|default:"N/A" }}</p>
+            <p><strong>Local Pickup:</strong> {% if listing.allows_local_pickup %}Yes{% else %}No{% endif %}</p>
+            <p><strong>Shipping Policy:</strong> {{ listing.shipping_policy_description|linebreaksbr|default:"Not specified." }}</p>
+            <p><small>Views: {{ listing.views_count }}</small></p>
+
+            {% if request.user == listing.lister %}
+            <a href="{% url 'listings:listing-edit' listing.pk %}" class="btn btn-warning">Edit Listing</a>
+            <a href="{% url 'listings:listing-delete' listing.pk %}" class="btn btn-danger">Delete Listing</a>
+            {% endif %}
+        </div>
+
+        {% if listing.listing_type == 'AUCTION' and listing.status == 'ACTIVE' %}
+        <div class="col-md-4">
+            <h4>Place Bid</h4>
+            {% if request.user.is_authenticated %}
+                {% if request.user == listing.lister %}
+                <p class="text-muted"><em>You cannot bid on your own auction.</em></p>
+                {% elif listing.auction_end_datetime < timezone_now %} {# Check against timezone_now passed from context #}
+                <p class="text-danger"><em>This auction has ended.</em></p>
+                {% else %}
+                <form method="post">
+                    {% csrf_token %}
+                    {{ bid_form|crispy }}
+                    <button type="submit" class="btn btn-success w-100 mt-2">Place Bid</button>
+                </form>
+                {% endif %}
+            {% else %}
+            <p><a href="{% url 'account_login' %}?next={{ request.path }}">Login</a> to place a bid.</p>
+            {% endif %}
+
+            <h5 class="mt-4">Recent Bids</h5>
+            {% if bids %}
+            <ul class="list-group list-group-flush">
+                {% for bid in bids %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>${{ bid.amount }} by {{ bid.bidder.username }}</span>
+                    <small class="text-muted">{{ bid.timestamp|timesince }} ago</small>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p>No bids yet.</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% if messages %}
+        <div class="mt-3">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

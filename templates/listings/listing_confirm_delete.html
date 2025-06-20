@@ -1,0 +1,17 @@
+{% extends "account/base.html" %}
+{% block head_title %}Confirm Delete Listing{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Confirm Delete Listing</h2>
+    <p>Are you sure you want to delete the listing for "<strong>{{ object.card_for_listing.card_name }}</strong>"?</p>
+    <p>Type: {{ object.get_listing_type_display }}
+    {% if object.listing_type == 'SALE' %} - Price: ${{ object.price }}{% endif %}
+    </p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, Delete</button>
+        <a href="{% url 'listings:listing-detail' object.pk %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}
