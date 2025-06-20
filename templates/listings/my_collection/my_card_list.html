@@ -1,0 +1,75 @@
+{% extends "account/base.html" %} {# Assumes a base template from allauth or your project #}
+{% load static %}
+{% load crispy_forms_tags %} {# If you use crispy forms for any filter form eventually #}
+
+{% block head_title %}My Card Collection{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>My Card Collection</h2>
+        <a href="{% url 'listings:my-card-create' %}" class="btn btn-primary">Add New Card</a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {# Add filtering/sorting form here if designed #}
+
+    {% if cards %}
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+        {% for card in cards %}
+        <div class="col">
+            <div class="card h-100">
+                {% if card.image_1 %}
+                <img src="{{ card.image_1.url }}" class="card-img-top" alt="{{ card.card_name }}" style="max-height: 200px; object-fit: contain; padding-top: 10px;">
+                {% else %}
+                <div class="text-center py-5 bg-light"><small>No Image</small></div>
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ card.card_name }}</h5>
+                    <p class="card-text mb-1"><small class="text-muted">{{ card.game.name|default:"N/A" }}</small></p>
+                    <p class="card-text mb-1"><small>{{ card.set_name|default:"N/A" }} ({{ card.year|default:"N/A" }})</small></p>
+                    <p class="card-text mb-1"><small>Condition: {{ card.get_condition_display|default:"N/A" }}</small></p>
+                    {% if card.is_graded %}
+                    <p class="card-text mb-1"><small>Graded: {{ card.grader }} {{ card.grade }}</small></p>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent border-top-0">
+                    <div class="btn-group w-100" role="group">
+                        <a href="{% url 'listings:my-card-detail' card.pk %}" class="btn btn-sm btn-outline-secondary">View</a>
+                        <a href="{% url 'listings:my-card-edit' card.pk %}" class="btn btn-sm btn-outline-primary">Edit</a>
+                        <a href="{% url 'listings:listing-create' %}?card_id={{ card.pk }}" class="btn btn-sm btn-outline-success">List It</a>
+                    </div>
+                    <a href="{% url 'listings:my-card-delete' card.pk %}" class="btn btn-sm btn-outline-danger w-100 mt-1">Delete</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {# Pagination #}
+    {% if is_paginated %}
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page=1">&laquo; First</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+            {% endif %}
+            <li class="page-item disabled"><a class="page-link" href="#">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</a></li>
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <p>You haven't added any cards to your collection yet. <a href="{% url 'listings:my-card-create' %}">Add your first card!</a></p>
+    {% endif %}
+</div>
+{% endblock %}

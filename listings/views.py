@@ -132,6 +132,7 @@ from django.shortcuts import redirect, get_object_or_404
 from django.http import HttpResponseForbidden
 from django.contrib import messages
 from .forms import ListingCreateEditForm, BidForm
+from .forms import UserCardForm
 from .models import Listing # Already imported Game, Card, Bid
 from django.db.models import Q # For search
 from django.utils import timezone # For comparing dates in BidForm and ListingDetailView
@@ -281,3 +282,93 @@ class ListingDetailView(DetailView):
                     messages.error(request, f"{field.capitalize() if field != '__all__' else ''}: {error}")
 
         return redirect(reverse('listings:listing-detail', kwargs={'pk': self.object.pk}))
+
+
+# --- User Card Collection Management Web Views ---
+
+class UserCardListView(LoginRequiredMixin, ListView):
+    model = Card
+    template_name = 'listings/my_collection/my_card_list.html' # Will create this template later
+    context_object_name = 'cards'
+    paginate_by = 12 # Or your preferred number
+
+    def get_queryset(self):
+        # Only show cards owned by the current logged-in user
+        return Card.objects.filter(owner=self.request.user).order_by('-date_added_to_collection')
+
+class UserCardDetailView(LoginRequiredMixin, UserPassesTestMixin, DetailView):
+    model = Card
+    template_name = 'listings/my_collection/my_card_detail.html' # Will create
+    context_object_name = 'card'
+
+    def test_func(self):
+        card = self.get_object()
+        return self.request.user == card.owner
+
+class UserCardCreateView(LoginRequiredMixin, CreateView):
+    model = Card
+    form_class = UserCardForm
+    template_name = 'listings/my_collection/my_card_form.html' # Will create
+    # success_url = reverse_lazy('listings:my-card-list') # Define this URL name later
+
+    def form_valid(self, form):
+        form.instance.owner = self.request.user
+        messages.success(self.request, f"Card '{form.instance.card_name}' added to your collection!")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        # Redirect to the detail view of the created card, or the list view
+        return reverse('listings:my-card-detail', kwargs={'pk': self.object.pk})
+
+
+class UserCardUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    model = Card
+    form_class = UserCardForm
+    template_name = 'listings/my_collection/my_card_form.html' # Reuse form template
+    # success_url = reverse_lazy('listings:my-card-list')
+
+    def test_func(self):
+        card = self.get_object()
+        return self.request.user == card.owner
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Card '{form.instance.card_name}' updated successfully!")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse('listings:my-card-detail', kwargs={'pk': self.object.pk})
+
+
+class UserCardDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+    model = Card
+    template_name = 'listings/my_collection/my_card_confirm_delete.html' # Will create
+    success_url = reverse_lazy('listings:my-card-list') # Define this URL name later
+    context_object_name = 'card'
+
+    def test_func(self):
+        card = self.get_object()
+        return self.request.user == card.owner
+
+    def post(self, request, *args, **kwargs):
+        card_to_delete = self.get_object()
+        # Check for active listings associated with this card
+        if Listing.objects.filter(card_for_listing=card_to_delete, status='ACTIVE').exists():
+            messages.error(request, f"Cannot delete '{card_to_delete.card_name}' as it is part of one or more active listings. Please cancel or manage those listings first.")
+            # It's better to redirect to where they can see this message, e.g., card detail or list.
+            # For DeleteView, returning a response like this might not be standard.
+            # A more robust way is to override delete() method.
+            return redirect(reverse('listings:my-card-detail', kwargs={'pk': card_to_delete.pk}))
+
+        messages.success(request, f"Card '{card_to_delete.card_name}' deleted from your collection.")
+        return super().post(request, *args, **kwargs)
+
+    # Alternative way to handle the pre-delete check in DeleteView
+    # def delete(self, request, *args, **kwargs):
+    #     self.object = self.get_object()
+    #     if Listing.objects.filter(card_for_listing=self.object, status='ACTIVE').exists():
+    #         messages.error(request, f"Cannot delete '{self.object.card_name}' as it is part of an active listing.")
+    #         return redirect(reverse('listings:my-card-detail', kwargs={'pk': self.object.pk}))
+    #     success_url = self.get_success_url()
+    #     self.object.delete()
+    #     messages.success(request, f"Card '{self.object.card_name}' deleted.")
+    #     return redirect(success_url)

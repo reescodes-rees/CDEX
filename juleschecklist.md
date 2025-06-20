@@ -25,6 +25,7 @@ This document tracks the development progress of the CDEX application, suggestio
     - [ ] Runtime `ModuleNotFoundError` for `captcha` in initial development environment. Currently disabled in `settings.py`. Needs revisit/resolution in a compatible environment to activate.
 
 ## Phase 1 / Initial Demo Features (In Progress / To Do)
+- [~] **User Card Collection Management UI**: (Dedicated section for users to add/view/edit/delete cards in their personal collection. V1 implemented: Models, Forms, Views, Templates, URLs. - 2025-06-20)
 
 - [ ] **Live Value Tracking (Core)**:
     - [ ] Track sales data for specific, graded cards (e.g., "Derek Jeter rookie PSA 9").
@@ -65,6 +66,7 @@ This document tracks the development progress of the CDEX application, suggestio
 - [ ] **Refine Allauth Deprecation Warnings**: Update settings to align with latest `django-allauth` best practices.
 
 ## Jules' Suggestions & Notes
+- *Note (2025-06-20):* The previous suggestion to prioritize UI for 'My Cards' (user collection) has been addressed with the V1 implementation of the 'My Collection' section.
 
 *(This section will be populated by Jules with specific suggestions or notes as development progresses)*
 

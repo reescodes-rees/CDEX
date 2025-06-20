@@ -1,3 +1,4 @@
+from .models import Game
 from django import forms
 from .models import Listing, Card, Bid
 
@@ -79,3 +80,52 @@ class BidForm(forms.ModelForm):
             raise forms.ValidationError(f"Bid amount must be at least {min_next_bid}.")
 
         return amount
+
+class UserCardForm(forms.ModelForm):
+    class Meta:
+        model = Card
+        fields = [
+            'game', 'card_name', 'set_name', 'year', 'card_identifier_in_set',
+            'public_description', # New field
+            'condition', 'is_graded', 'grader', 'grade', 'certification_number',
+            'purchase_price',
+            'image_1', 'image_2', 'image_3'
+        ]
+        widgets = {
+            'public_description': forms.Textarea(attrs={'rows': 4}),
+            'year': forms.NumberInput(attrs={'min': 1900, 'max': 2099}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Ensure Game model is imported in forms.py if not already
+        # from .models import Game # (This should be at the top of forms.py)
+        self.fields['game'].queryset = Game.objects.all().order_by('name')
+        self.fields['image_1'].required = False
+        self.fields['image_2'].required = False
+        self.fields['image_3'].required = False
+        self.fields['purchase_price'].required = False
+        self.fields['set_name'].required = False
+        self.fields['year'].required = False
+        self.fields['card_identifier_in_set'].required = False
+        self.fields['grader'].required = False # Grader and grade are handled in clean()
+        self.fields['grade'].required = False
+        self.fields['certification_number'].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        is_graded = cleaned_data.get('is_graded')
+        grader = cleaned_data.get('grader')
+        grade = cleaned_data.get('grade')
+
+        if is_graded:
+            if not grader:
+                self.add_error('grader', 'Grader is required if card is marked as graded.')
+            if not grade:
+                self.add_error('grade', 'Grade is required if card is marked as graded.')
+        else:
+            cleaned_data['grader'] = None # Use model's default blank=True, null=True
+            cleaned_data['grade'] = None  # Use model's default blank=True, null=True
+            cleaned_data['certification_number'] = '' # Ensure cert number is also cleared
+
+        return cleaned_data

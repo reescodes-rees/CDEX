@@ -45,6 +45,7 @@ class Card(models.Model):
     certification_number = models.CharField(max_length=100, blank=True, null=True)
 
     purchase_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Optional: Price you paid for this card.")
+    public_description = models.TextField(blank=True, help_text="Publicly visible description of the card, its features, or notable aspects.")
     notes = models.TextField(blank=True, help_text="Your private notes about this card instance.")
 
     image_1 = models.ImageField(upload_to='card_images/', blank=True, null=True, help_text="Primary image of your card.") # Requires Pillow

@@ -8,6 +8,7 @@ from rest_framework import status
 
 from .models import Game, Card, Listing, Bid
 from .forms import ListingCreateEditForm, BidForm
+from .forms import UserCardForm
 
 User = get_user_model()
 
@@ -334,3 +335,187 @@ class ListingWebViewTests(TestCase):
         auction.refresh_from_db()
         self.assertEqual(auction.current_highest_bid, 6.00) # Keep as 6.00 for Decimal comparison if needed, or use Decimal('6.0')
         self.assertEqual(auction.current_high_bidder, self.user)
+
+
+
+# --- User Card Collection Form Tests ---
+class UserCardFormTests(TestCase):
+    def setUp(self):
+        self.user = create_user("cardformuser", "cardformuser")
+        self.game = Game.objects.create(name="Game for Card Forms")
+        self.valid_data = {
+            'game': self.game.pk,
+            'card_name': 'Valid Test Card',
+            'condition': 'NM',
+            'public_description': 'A very nice card.',
+            'is_graded': True,
+            'grader': 'PSA',
+            'grade': '9',
+            # image fields are not required by default in form
+        }
+
+    def test_user_card_form_valid_data(self):
+        form = UserCardForm(data=self.valid_data)
+        if not form.is_valid():
+            print(f"UserCardForm (valid data) errors: {form.errors.as_json()}")
+        self.assertTrue(form.is_valid())
+
+    def test_user_card_form_missing_required_fields(self):
+        invalid_data = self.valid_data.copy()
+        del invalid_data['card_name'] # card_name is required
+        form = UserCardForm(data=invalid_data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('card_name', form.errors)
+
+    def test_user_card_form_grading_logic_graded_no_details(self):
+        # is_graded is True, but no grader/grade provided
+        invalid_data = self.valid_data.copy()
+        invalid_data['is_graded'] = True
+        del invalid_data['grader']
+        del invalid_data['grade']
+        form = UserCardForm(data=invalid_data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('grader', form.errors)
+        self.assertIn('grade', form.errors)
+
+    def test_user_card_form_grading_logic_not_graded_clears_details(self):
+        # is_graded is False, but grader/grade provided (should be cleared)
+        data = self.valid_data.copy()
+        data['is_graded'] = False
+        data['grader'] = 'PSA' # This should be cleared by the form's clean method
+        data['grade'] = '9'   # This should be cleared
+        form = UserCardForm(data=data)
+        self.assertTrue(form.is_valid(), msg=f"Form errors: {form.errors.as_json()}")
+        # Check that grader and grade are cleared in cleaned_data
+        self.assertIsNone(form.cleaned_data.get('grader'))
+        self.assertIsNone(form.cleaned_data.get('grade'))
+        self.assertEqual(form.cleaned_data.get('certification_number'), '')
+
+
+# --- User Card Collection Web View Tests ---
+class UserCardCollectionViewTests(TestCase):
+    def setUp(self):
+        self.user = create_user("collection_user", "collection_user", password="aVeryComplexP@ssw0rd!")
+        self.other_user = create_user("other_collection", "other_collection", password="aVeryComplexP@ssw0rd!")
+        self.game = Game.objects.create(name="Collection Game")
+
+        self.card1_user = Card.objects.create(owner=self.user, game=self.game, card_name="My Card 1", condition="M")
+        self.card2_user = Card.objects.create(owner=self.user, game=self.game, card_name="My Card 2", condition="LP")
+        self.card_other_user = Card.objects.create(owner=self.other_user, game=self.game, card_name="Other's Card", condition="NM")
+
+        self.client = Client()
+        self.client.login(email=self.user.email, password="aVeryComplexP@ssw0rd!")
+
+        self.list_url = reverse('listings:my-card-list')
+        self.create_url = reverse('listings:my-card-create')
+        self.detail_url_user_card1 = reverse('listings:my-card-detail', kwargs={'pk': self.card1_user.pk})
+        self.edit_url_user_card1 = reverse('listings:my-card-edit', kwargs={'pk': self.card1_user.pk})
+        self.delete_url_user_card1 = reverse('listings:my-card-delete', kwargs={'pk': self.card1_user.pk})
+        self.detail_url_other_user_card = reverse('listings:my-card-detail', kwargs={'pk': self.card_other_user.pk})
+
+
+    def test_my_card_list_view_authenticated(self):
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'listings/my_collection/my_card_list.html')
+        self.assertContains(response, self.card1_user.card_name)
+        self.assertContains(response, self.card2_user.card_name)
+        self.assertNotContains(response, self.card_other_user.card_name) # Should only show user's cards
+
+    def test_my_card_list_view_unauthenticated_redirects(self):
+        unauth_client = Client()
+        response = unauth_client.get(self.list_url)
+        self.assertEqual(response.status_code, 302) # Redirect to login
+        self.assertTrue(reverse('account_login') in response.url)
+
+    def test_my_card_create_view_get(self):
+        response = self.client.get(self.create_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIsInstance(response.context['form'], UserCardForm)
+        self.assertTemplateUsed(response, 'listings/my_collection/my_card_form.html')
+
+    def test_my_card_create_view_post_success(self):
+        card_count_before = Card.objects.filter(owner=self.user).count()
+        form_data = {
+            'game': self.game.pk,
+            'card_name': 'New Awesome Card',
+            'condition': 'NM',
+            'public_description': 'Just pulled!',
+            'is_graded': False
+            # Ensure all other non-required fields are handled by form if not provided
+        }
+        response = self.client.post(self.create_url, form_data, follow=True)
+        if response.status_code != 200 or not response.redirect_chain: # Check for form errors if not redirecting as expected
+             if hasattr(response, 'context') and response.context and 'form' in response.context:
+                 print(f"Create Card View POST errors: {response.context['form'].errors.as_json()}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.redirect_chain) # Ensure it redirected
+        self.assertEqual(Card.objects.filter(owner=self.user).count(), card_count_before + 1)
+        new_card = Card.objects.get(card_name='New Awesome Card', owner=self.user)
+        self.assertRedirects(response, reverse('listings:my-card-detail', kwargs={'pk': new_card.pk}))
+        self.assertContains(response, "Card &#x27;New Awesome Card&#x27; added to your collection!")
+
+
+    def test_my_card_detail_view_owner_access(self):
+        response = self.client.get(self.detail_url_user_card1)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.card1_user.card_name)
+        self.assertTemplateUsed(response, 'listings/my_collection/my_card_detail.html')
+
+    def test_my_card_detail_view_other_user_no_access(self):
+        response = self.client.get(self.detail_url_other_user_card)
+        self.assertEqual(response.status_code, 403)
+
+    def test_my_card_update_view_owner_access_and_success(self):
+        response_get = self.client.get(self.edit_url_user_card1)
+        self.assertEqual(response_get.status_code, 200)
+        self.assertTemplateUsed(response_get, 'listings/my_collection/my_card_form.html')
+
+        updated_name = "My Card 1 Updated"
+        # Minimal data for update, assuming other fields are optional or retain old values
+        form_data_update = {
+            'game': self.card1_user.game.pk, # Required by form
+            'card_name': updated_name,       # Required by form
+            'condition': self.card1_user.condition, # Required by form
+            'is_graded': self.card1_user.is_graded, # Required by form
+            # Other fields from UserCardForm are not strictly required by model but form might need them
+            # if they don't have defaults or blank=True in model and form doesn't override.
+            # The UserCardForm makes many fields not required.
+            'public_description': 'Updated description.'
+        }
+        response_post = self.client.post(self.edit_url_user_card1, form_data_update, follow=True)
+        if response_post.status_code != 200 or not response_post.redirect_chain:
+            if hasattr(response_post, 'context') and response_post.context and 'form' in response_post.context:
+                 print(f"Update Card View POST errors: {response_post.context['form'].errors.as_json()}")
+
+        self.assertEqual(response_post.status_code, 200)
+        self.assertTrue(response_post.redirect_chain)
+        self.card1_user.refresh_from_db()
+        self.assertEqual(self.card1_user.card_name, updated_name)
+        self.assertRedirects(response_post, self.detail_url_user_card1)
+        self.assertContains(response_post, f"Card &#x27;{updated_name}&#x27; updated successfully!")
+
+
+    def test_my_card_delete_view_owner_access_and_success(self):
+        response_get = self.client.get(self.delete_url_user_card1)
+        self.assertEqual(response_get.status_code, 200)
+        self.assertTemplateUsed(response_get, 'listings/my_collection/my_card_confirm_delete.html')
+
+        card_count_before = Card.objects.filter(owner=self.user).count()
+        response_post = self.client.post(self.delete_url_user_card1, follow=True)
+        self.assertEqual(response_post.status_code, 200)
+        self.assertTrue(response_post.redirect_chain)
+        self.assertEqual(Card.objects.filter(owner=self.user).count(), card_count_before - 1)
+        self.assertRedirects(response_post, self.list_url)
+        self.assertContains(response_post, f"Card &#x27;{self.card1_user.card_name}&#x27; deleted from your collection.")
+
+    def test_my_card_delete_view_prevent_if_active_listing(self):
+        Listing.objects.create(lister=self.user, card_for_listing=self.card1_user, listing_type='SALE', price=10.00, status='ACTIVE')
+
+        response_post = self.client.post(self.delete_url_user_card1, follow=True)
+        self.assertEqual(response_post.status_code, 200)
+        self.assertTrue(response_post.redirect_chain) # Should redirect
+        self.assertTrue(Card.objects.filter(pk=self.card1_user.pk).exists())
+        self.assertContains(response_post, f"Cannot delete &#x27;{self.card1_user.card_name}&#x27; as it is part of one or more active listings.")
+        self.assertRedirects(response_post, self.detail_url_user_card1)
