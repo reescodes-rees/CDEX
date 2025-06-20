@@ -1,0 +1,15 @@
+{% extends "account/base.html" %}
+{% block head_title %}Welcome to CDEX{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <h1>Welcome to CDEX!</h1>
+    <p>The ultimate hub for trading card collectors and traders.</p>
+    <p><a href="{% url 'listings:listing-list' %}" class="btn btn-primary">Browse Listings</a></p>
+    {% if user.is_authenticated %}
+        <p><a href="{% url 'listings:listing-create' %}" class="btn btn-secondary">Create New Listing</a></p>
+        <p><a href="{% url 'account_logout' %}" class="btn btn-outline-danger">Logout</a></p>
+    {% else %}
+        <p><a href="{% url 'account_login' %}" class="btn btn-success">Login</a> or <a href="{% url 'account_signup' %}" class="btn btn-info">Sign Up</a></p>
+    {% endif %}
+</div>
+{% endblock %}

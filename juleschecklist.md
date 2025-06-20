@@ -31,11 +31,11 @@ This document tracks the development progress of the CDEX application, suggestio
     - [ ] Implement backend logic to ingest and process this sales data.
 - [ ] **Order Book Recording (Core)**:
     - [ ] Record buy/sell orders or listings that contribute to value tracking.
-- [ ] **Card Listings**:
+- [~] **Card Listings**: (Basic CRUD UI & API implemented - 2025-06-20)
     - [ ] Allow users to list their cards for sale or trade.
     - [ ] Develop API endpoints for creating, viewing, and managing listings.
     - [ ] Basic frontend UI for listing and viewing cards.
-- [ ] **Auction Functionality**:
+- [~] **Auction Functionality**: (Basic API & UI for auctions & bidding implemented - 2025-06-20)
     - [ ] Allow users to auction cards (e.g., Pokémon cards as an example focus).
     - [ ] Bidding system.
     - [ ] API endpoints and UI for auctions.
@@ -43,9 +43,9 @@ This document tracks the development progress of the CDEX application, suggestio
     - [ ] Display historical value changes for cards.
     - [ ] API endpoints to provide data for graphs.
     - [ ] Frontend components to render graphs.
-- [ ] **Grading Information**:
+- [~] **Grading Information**: (Models support it, displayed on listing detail - 2025-06-20)
     - [ ] Store and display grading information (PSA, Beckett, etc.) for cards.
-- [ ] **Support for "All Cards"**:
+- [~] **Support for "All Cards"**: (Models designed for flexibility - 2025-06-20)
     - [ ] Ensure models and systems are flexible enough to accommodate diverse card types.
 - [ ] **Facilitated Direct Payments (Phase 1 Method)**:
     - [ ] Allow users to specify preferred direct payment methods (CashApp, Venmo, PayPal.Me) on their profiles.
@@ -79,3 +79,5 @@ This document tracks the development progress of the CDEX application, suggestio
 - **Recommendation (2025-06-20):** Address the `django-allauth` deprecation warnings in `settings.py` at the next convenient opportunity to ensure long-term compatibility and adherence to best practices.
 
 - **Operational Suggestion (2025-06-20):** Jules (the AI assistant) should, as a standard procedure or if technically feasible in future versions, read the `juleschecklist.md` file at the beginning of new chat sessions. This will ensure Jules is always informed of the latest project status, completed tasks, and active goals for the CDEX project.
+
+- *Note (2025-06-20):* API for managing a user's card collection ('My Cards') is implemented. Corresponding frontend UI for users to add/edit cards in their collection (before listing) should be a high-priority next step for usability.

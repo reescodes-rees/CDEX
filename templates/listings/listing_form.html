@@ -1,0 +1,45 @@
+{% extends "account/base.html" %} {# Assuming a base template exists from previous steps #}
+{% load crispy_forms_tags %} {# Assuming crispy_forms is configured #}
+{% block head_title %}{% if object %}Edit Listing{% else %}Create Listing{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{% if object %}Edit Listing{% else %}Create New Listing{% endif %}</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <button type="submit" class="btn btn-primary mt-3">
+            {% if object %}Save Changes{% else %}Create Listing{% endif %}
+        </button>
+        <a href="{% if object %}{% url 'listings:listing-detail' object.pk %}{% else %}{% url 'listings:listing-list' %}{% endif %}" class="btn btn-secondary mt-3">Cancel</a>
+    </form>
+</div>
+
+{# Basic JS to show/hide fields based on listing_type - can be more sophisticated #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const listingTypeField = document.getElementById('id_listing_type');
+    // Get parent divs of price, auction_start_price, auction_bid_increment, auction_end_datetime, trade_preference_description
+    // Assuming crispy forms wraps fields in divs like <div id="div_id_price" class="form-group">...</div>
+    const priceDiv = document.getElementById('div_id_price');
+    const auctionStartPriceDiv = document.getElementById('div_id_auction_start_price');
+    const auctionBidIncrementDiv = document.getElementById('div_id_auction_bid_increment');
+    const auctionEndDatetimeDiv = document.getElementById('div_id_auction_end_datetime');
+    const tradePreferenceDiv = document.getElementById('div_id_trade_preference_description');
+
+    function toggleFields() {
+        const selectedType = listingTypeField.value;
+        if (priceDiv) priceDiv.style.display = selectedType === 'SALE' ? '' : 'none';
+        if (auctionStartPriceDiv) auctionStartPriceDiv.style.display = selectedType === 'AUCTION' ? '' : 'none';
+        if (auctionBidIncrementDiv) auctionBidIncrementDiv.style.display = selectedType === 'AUCTION' ? '' : 'none';
+        if (auctionEndDatetimeDiv) auctionEndDatetimeDiv.style.display = selectedType === 'AUCTION' ? '' : 'none';
+        if (tradePreferenceDiv) tradePreferenceDiv.style.display = selectedType === 'TRADE' ? '' : 'none';
+    }
+
+    if (listingTypeField) {
+        listingTypeField.addEventListener('change', toggleFields);
+        toggleFields(); // Initial call
+    }
+});
+</script>
+{% endblock %}
