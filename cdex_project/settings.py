@@ -7,7 +7,8 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
-    'django.contrib.humanize',
+        'messaging',
+    'encrypted_model_fields','django.contrib.humanize',
     'listings',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -154,3 +155,8 @@ SIMPLE_JWT = {
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'mediafiles' # Assumes BASE_DIR is Path object from pathlib
 # If BASE_DIR is string from os.path: MEDIA_ROOT = os.path.join(BASE_DIR, 'mediafiles')
+
+# Encryption keys for django-encrypted-model-fields
+# IMPORTANT: Replace this with a securely generated key and keep it secret!
+# Generate with: from cryptography.fernet import Fernet; Fernet.generate_key().decode()
+FIELD_ENCRYPTION_KEY = 'jV2P_x7k-qB5_s2L8wN0fH7gK3jS6dVzX9cYm1aZpE0=' # Placeholder, now singular
